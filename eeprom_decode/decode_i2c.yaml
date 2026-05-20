@@ -1,0 +1,13 @@
+# Copy to decode_i2c.yaml next to the script, or /etc/decode_i2c.yaml
+#
+# platforms:
+#   <SONiC platform string from DEVICE_METADATA>:
+#     i2c_start: 26          # first QSFP bus number
+#     port_index: "eth//4"   # EthernetN -> index = N//4
+#     eeprom_template: "/sys/bus/i2c/devices/i2c-{bus}/{bus}-0050/eeprom"
+
+platforms:
+  x86_64-cel_seastone-r0:
+    i2c_start: 26
+    port_index: "eth//4"
+    eeprom_template: "/sys/bus/i2c/devices/i2c-{bus}/{bus}-0050/eeprom"
