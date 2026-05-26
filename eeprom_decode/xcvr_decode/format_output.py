@@ -89,10 +89,3 @@ def format_text(decoded: Dict[str, Any], meta: Dict[str, Any]) -> str:
 
 def format_json(decoded: Dict[str, Any], meta: Dict[str, Any]) -> str:
     return json.dumps({"meta": meta, "decoded": decoded}, indent=2, default=str)
-
-
-# Back-compat aliases for internal imports
-_banner = banner
-_subheading = subheading
-_kv = kv
-_lane_table = lane_table

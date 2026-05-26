@@ -1,0 +1,20 @@
+# Copy to xcvr_decode.yaml next to the script, or /etc/xcvr_decode.yaml
+#
+# platforms:
+#   <SONiC platform string from DEVICE_METADATA>:
+#     i2c_start: 26          # first QSFP bus number (i2c backend only)
+#     port_index: "eth//4"   # EthernetN -> index = N//4 (or eth//8 for 8-lane ports)
+#     eeprom_template: "/sys/bus/i2c/devices/i2c-{bus}/{bus}-0050/eeprom"
+#     backend: i2c           # "i2c" (default) or "sdk" (SONiC platform API)
+#     sfp_index_offset: 1    # sdk backend: platform_sfp_index = port_index + offset
+
+platforms:
+  x86_64-cel_seastone-r0:
+    i2c_start: 26
+    port_index: "eth//4"
+    eeprom_template: "/sys/bus/i2c/devices/i2c-{bus}/{bus}-0050/eeprom"
+
+  x86_64-nvidia_sn5600-r0:
+    backend: sdk
+    port_index: "eth//8"
+    sfp_index_offset: 1

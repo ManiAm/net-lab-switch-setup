@@ -14,6 +14,7 @@ IDENTIFIER = {
     0x0D: "QSFP+ or later",
     0x11: "QSFP28 or later",
     0x18: "QSFP-DD",
+    0x19: "OSFP 8X Pluggable Transceiver",
     0x1E: "OSFP",
 }
 

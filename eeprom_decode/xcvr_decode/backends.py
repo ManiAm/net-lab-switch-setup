@@ -1,14 +1,15 @@
-"""Hardware / OS backends: resolve interface name -> EEPROM sysfs path."""
+"""Hardware / OS backends: resolve interface name -> EEPROM path or SDK reader."""
 
 from __future__ import annotations
 
 import os
 import re
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
-from .i2c_reader import EepromReader, EepromReadError
+from .eeprom_reader import EepromReader, EepromReadError, SdkEepromReader
 
 
 @dataclass
@@ -26,8 +27,8 @@ def _package_dir() -> Path:
 def _load_yaml_platforms() -> dict:
     """Minimal YAML subset without PyYAML dependency."""
     paths = [
-        _package_dir() / "decode_i2c.yaml",
-        Path("/etc/decode_i2c.yaml"),
+        _package_dir() / "xcvr_decode.yaml",
+        Path("/etc/xcvr_decode.yaml"),
     ]
     platforms = {}
     for p in paths:
@@ -60,9 +61,13 @@ def _sonic_platform() -> Optional[str]:
     except (OSError, json.JSONDecodeError, ImportError):
         pass
     try:
-        out = os.popen("sonic-cfggen -d -v DEVICE_METADATA.localhost.platform 2>/dev/null").read().strip()
+        result = subprocess.run(
+            ["sonic-cfggen", "-d", "-v", "DEVICE_METADATA.localhost.platform"],
+            capture_output=True, text=True, timeout=5,
+        )
+        out = result.stdout.strip()
         return out or None
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return None
 
 
@@ -75,11 +80,13 @@ def _eth_index(name: str) -> int:
 
 def _eval_port_index(expr: str, eth: int) -> int:
     expr = expr.strip().lower()
+    if expr in ("eth//8", "eth/8"):
+        return eth // 8
     if expr in ("eth//4", "eth/4"):
         return eth // 4
     if expr == "eth":
         return eth
-    raise EepromReadError(f"Unsupported port_index in config: {expr!r} (use eth//4)")
+    raise EepromReadError(f"Unsupported port_index in config: {expr!r} (use eth//8, eth//4, or eth)")
 
 
 def resolve_eeprom_path(
@@ -105,7 +112,7 @@ def resolve_eeprom_path(
             meta={"bus": i2c_bus, "addr": hex(i2c_addr)},
         )
 
-    env = os.environ.get("DECODE_I2C_EEPROM_PATH")
+    env = os.environ.get("XCVR_DECODE_EEPROM_PATH") or os.environ.get("DECODE_I2C_EEPROM_PATH")
     if env:
         return ResolvedPath(
             interface=interface or "env",
@@ -127,15 +134,27 @@ def resolve_eeprom_path(
     if not cfg:
         known = ", ".join(sorted(platforms.keys())) or "(none)"
         raise EepromReadError(
-            f"No I2C mapping for platform {platform!r} in decode_i2c.yaml. "
+            f"No mapping for platform {platform!r} in xcvr_decode.yaml. "
             f"Known platforms: {known}. "
             "Add a platform block or use --eeprom-path / --i2c-bus."
         )
 
     eth = _eth_index(interface)
-    i2c_start = int(cfg.get("i2c_start", 26))
+    backend_type = cfg.get("backend", "i2c")
     port_index_expr = cfg.get("port_index", "eth//4")
     idx = _eval_port_index(port_index_expr, eth)
+
+    if backend_type == "sdk":
+        sfp_index_offset = int(cfg.get("sfp_index_offset", 1))
+        platform_sfp_index = idx + sfp_index_offset
+        return ResolvedPath(
+            interface=interface,
+            eeprom_path=f"sdk://platform_sfp_index={platform_sfp_index}",
+            backend=f"sdk:{platform}",
+            meta={"eth": eth, "port_index": idx, "platform_sfp_index": platform_sfp_index},
+        )
+
+    i2c_start = int(cfg.get("i2c_start", 26))
     bus = i2c_start + idx
 
     template = cfg.get(
@@ -157,7 +176,10 @@ def open_reader(
     eeprom_path: Optional[str] = None,
     i2c_bus: Optional[int] = None,
     i2c_addr: int = 0x50,
-) -> tuple[EepromReader, ResolvedPath]:
+) -> tuple[Union[EepromReader, SdkEepromReader], ResolvedPath]:
     resolved = resolve_eeprom_path(interface, eeprom_path, i2c_bus, i2c_addr)
-    reader = EepromReader(path=resolved.eeprom_path)
+    if resolved.backend.startswith("sdk:"):
+        reader = SdkEepromReader(platform_sfp_index=resolved.meta["platform_sfp_index"])
+    else:
+        reader = EepromReader(path=resolved.eeprom_path)
     return reader, resolved
