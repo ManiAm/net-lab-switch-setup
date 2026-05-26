@@ -16,7 +16,7 @@ Understanding these two units is essential before discussing data rate, signal r
 
 A **data element** is the smallest unit of information — a single bit (0 or 1). Data elements describe *what* is being sent and exist at the logical level. A **signal element** is the smallest unit of the physical signal — a specific voltage level or transition that occupies a fixed time slot on the wire. Signal elements describe *how* data is carried across the medium.
 
-<img src="../pics/signal/data_elem.png" alt="segment" width="550">
+<img src="../pics/data_elem.png" alt="segment" width="550">
 
 The ratio between data elements and signal elements depends on the [line coding scheme](#line-coding-schemes). A single signal element may represent one data element, a fraction of one, or multiple data elements. For example, NRZ maps one signal element to one bit, PAM4 maps one signal element to two bits, and Manchester uses two signal elements per bit.
 
@@ -59,7 +59,7 @@ In most serial links, no separate clock signal is sent alongside the data. The r
 | Multilevel | 2B1Q                    | 4             | 2                       | Moderate          | Low          | ISDN                   |
 | Multilevel | PAM4                    | 4             | 2                       | Poor alone        | Low          | Used in modern SerDes  |
 
-<img src="../pics/signal/encoding-examples.png" alt="segment" width="550">
+<img src="../pics/encoding-examples.png" alt="segment" width="550">
 
 ### NRZ (Non-Return-to-Zero)
 
@@ -86,7 +86,7 @@ PAM4 sidesteps this limit by encoding more data into each symbol rather than tra
 | High-mid      | 10                | 11           |
 | Highest       | 11                | 10           |
 
-<img src="../pics/signal/nrz_pam4.png" alt="NRZ vs PAM4 signal comparison" width="650">
+<img src="../pics/nrz_pam4.png" alt="NRZ vs PAM4 signal comparison" width="650">
 
 For example, a 112-Gbaud PAM4 signal delivers 224 Gb/s of raw data — twice what NRZ achieves at the same baud rate.
 
@@ -179,7 +179,7 @@ An eye diagram is created by overlaying many bit periods of a signal on top of e
 The following shows the eye diagram for an NRZ (two-level) signal:
 
 <table><tr>
-<td><img src="../pics/signal/eye_diagram.gif" alt="Eye diagram" width="500"></td>
+<td><img src="../pics/eye_diagram.gif" alt="Eye diagram" width="500"></td>
 <td valign="top">
 
 1. Zero level
@@ -203,7 +203,7 @@ When the eye is open, communication is stable. When the eye closes — due to an
 
 The impact of modulation on eye quality is visible when comparing NRZ and PAM4. NRZ produces a single wide eye opening between its two voltage levels. PAM4 splits the same voltage swing across four levels, creating three stacked eyes each approximately one-third the height — significantly reducing voltage margin per symbol:
 
-<img src="../pics/signal/nrz_pam4_2.png" alt="NRZ vs PAM4 eye comparison" width="650">
+<img src="../pics/nrz_pam4_2.png" alt="NRZ vs PAM4 eye comparison" width="650">
 
 ## BER (Bit Error Rate)
 

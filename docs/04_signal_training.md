@@ -12,7 +12,7 @@ Equalization is the intentional shaping of a signal to compensate for distortion
 
 They solve the same problem from opposite ends. Together, TX and RX equalization form a coordinated system that allows SerDes links to operate at very high data rates over imperfect physical channels while maintaining an open eye, low bit-error rate, and reasonable power consumption. The diagram below focuses on the equalization stages within the SerDes signal path:
 
-<img src="../pics/signal/serdes_path.png" alt="segment" width="650">
+<img src="../pics/serdes_path.png" alt="segment" width="650">
 
 > Encoding, FEC, and the full stage pipeline are covered in [Digital Signal Fundamentals](03_signal_basics.md#encoding-in-serdes).
 
@@ -43,7 +43,7 @@ The taps are organized relative to the current bit being transmitted, called the
 
 The number of taps and their placement depend on the SerDes architecture, supported data rates, modulation scheme (NRZ vs PAM4), and channel characteristics. As a result, an implementation may include only a single pre-cursor and post-cursor tap, or it may support multiple pre-cursor taps (e.g., Pre1, Pre2, Pre3) and multiple post-cursor taps. Supporting additional taps allows the transmitter to compensate for longer channel impulse responses and more severe inter-symbol interference.
 
-<img src="../pics/signal/weights.png" alt="segment" width="650">
+<img src="../pics/weights.png" alt="segment" width="650">
 
 Positive weights add energy, negative weights subtract energy, and zero disables a tap entirely. By carefully choosing these values, the transmitter boosts transitions, reduces long flat regions, and restores high-frequency content lost in the channel.
 
@@ -71,7 +71,7 @@ Link training is the automatic startup calibration process that runs when a link
 - When link speed changes (e.g., 100G → 400G)
 - After reset or power cycle
 
-<img src="../pics/signal/training.png" alt="segment" width="650">
+<img src="../pics/training.png" alt="segment" width="650">
 
 During link training, the system automatically:
 

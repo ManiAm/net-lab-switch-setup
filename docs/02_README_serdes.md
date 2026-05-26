@@ -1,4 +1,3 @@
-
 # SerDes and Lanes
 
 This section explains how an NPU connects to the outside world at the physical level — the serialization of data for high-speed transmission, the lane and port architecture, and the signaling standards that define per-lane rates.
@@ -21,9 +20,9 @@ The result is superior noise immunity (enabling reliable signaling at 25–100+ 
 
 A **SerDes** is the analog/mixed-signal circuit block on the NPU that performs this parallel-to-serial (and serial-to-parallel) conversion. Every high-speed port on a switch ASIC is driven by one or more SerDes circuits.
 
-- **Transmit (Serializer):** Takes a wide parallel data word from the ASIC's internal fabric, applies block encoding (e.g., 64b/66b with scrambling), serializes it into a single high-speed bitstream, applies line coding (NRZ or PAM4) to map bits to voltage levels, shapes the waveform with a TX FIR filter, and drives it out on one differential pair (TX+ / TX−).
+- **Transmit (Serializer):** Converts wide parallel data from the ASIC's internal fabric into a high-speed serial bitstream, encodes and shapes it, and drives it onto a differential pair (TX+ / TX−).
 
-- **Receive (Deserializer):** Accepts the incoming serial bitstream on a differential pair (RX+ / RX−), equalizes and recovers the data, and reconstructs the original parallel word for the ASIC's internal logic.
+- **Receive (Deserializer):** Accepts the incoming serial bitstream from a differential pair (RX+ / RX−), recovers and decodes it, and reconstructs the original parallel data for the ASIC's internal logic.
 
 The diagram below shows the internal stages of a SerDes:
 
@@ -43,26 +42,15 @@ On the receive side, **CTLE** boosts high frequencies attenuated by the channel,
 
 > The diagram omits [FEC encoding](03_signal_basics.md#forward-error-correction-fec), which sits between block encoding and the serializer on transmit, and between the deserializer and decoder on receive. For a detailed discussion of encoding stages and FEC, see [Digital Signal Fundamentals](03_signal_basics.md). For equalization and link training, see [Link Equalization](04_signal_training.md).
 
-## Lanes, Ports, and Port Macros
+## SerDes Lanes
 
 Each SerDes instance operates independently and constitutes one **lane** — four conductors in total: a TX differential pair (TX+/TX−) carrying data outbound and an RX differential pair (RX+/RX−) carrying data inbound, simultaneously. A 25G lane means 25 Gb/s in each direction; the per-lane rate always refers to one direction.
 
-The total number of lanes an ASIC contains defines its **I/O budget**: the hard upper limit on aggregate bandwidth the chip can deliver to the outside world.
-
-A physical Ethernet **port** is composed of one or more lanes bonded together. The port's total speed is the arithmetic sum of its lane speeds:
-
-    Port speed = Per-lane rate × Number of lanes
-
-For example, a 100G port bonds four 25G lanes (4 × 25G = 100G), while an 800G port bonds eight 100G lanes (8 × 100G = 800G). Lower-speed ports such as 10GbE or 25GbE typically use a single lane.
-
-A **port macro** (also called a port block or port group) is a hardware unit on the ASIC that manages a fixed cluster of SerDes lanes and maps them to one physical front-panel cage. The port macro handles lane-to-port binding, breakout configuration, and the MAC/PCS layer for its lane group.
-
-
 ## SerDes Generations (OIF CEI)
 
-The Optical Internetworking Forum (OIF) defines the Common Electrical Interface (CEI) specifications that standardize SerDes signaling rates across the industry:
+The Optical Internetworking Forum (OIF) defines the Common Electrical Interface (CEI) specifications that standardize SerDes signaling rates across the industry. Each ASIC generation implements a specific CEI rate across all its SerDes instances:
 
-| OIF Standard | Per-Lane Rate | Modulation | Example Form Factors Using It       |
+| OIF Standard | Per-Lane Rate | Modulation | Example Form Factors                |
 | ------------ | ------------- | ---------- | ----------------------------------- |
 | CEI-10G      | 10 Gb/s       | NRZ        | SFP+, QSFP+                         |
 | CEI-25G      | 25 Gb/s       | NRZ        | SFP28, QSFP28                       |
@@ -70,31 +58,92 @@ The Optical Internetworking Forum (OIF) defines the Common Electrical Interface 
 | CEI-112G     | 100 Gb/s      | PAM4       | SFP112, QSFP112, OSFP, QSFP-DD 800G |
 | CEI-224G     | 200 Gb/s      | PAM4       | SFP224, QSFP224, OSFP-XD            |
 
-Each ASIC generation implements a specific CEI rate across all its lanes. The product of (lane count) × (per-lane rate) determines the chip's total I/O bandwidth. For example, the Broadcom Tomahawk (BCM56960) implements 128 lanes at CEI-25G, yielding 128 × 25G = 3.2 Tbps total switching capacity.
+## I/O Budget
 
+The total number of lanes an ASIC contains, combined with its per-lane rate, defines the **I/O budget**: the hard upper limit on aggregate bandwidth the chip can deliver to the outside world.
 
-## Port Breakout
+    I/O budget = Total lanes × Per-lane rate
 
-Breakout (also called channel splitting or fan-out) is the practice of reconfiguring a single high-speed **physical port** into multiple lower-speed **logical ports** by changing how SerDes lanes within a port macro are grouped. In the default configuration, all lanes in a port macro are bonded into a single interface. In breakout mode, those lanes are split into independent sub-ports, each operating as a separate logical interface with its own MAC address, IP configuration, and forwarding behavior.
+The table below shows how lane count and per-lane rate determine this budget across well-known switch ASICs:
+
+| ASIC                           | Total Lanes | Per-Lane Rate | Modulation | I/O Budget  |
+| ------------------------------ | ----------- | ------------- | ---------- | ----------- |
+| Broadcom Tomahawk (BCM56960)   | 128         | 25 Gb/s       | NRZ        | 3.2 Tbps    |
+| Intel Tofino 2                 | 256         | 50 Gb/s       | PAM4       | 12.8 Tbps   |
+| Broadcom Tomahawk 4 (BCM56990) | 512         | 50 Gb/s       | PAM4       | 25.6 Tbps   |
+| Broadcom Tomahawk 5            | 512         | 100 Gb/s      | PAM4       | 51.2 Tbps   |
+| NVIDIA Spectrum-4              | 512         | 100 Gb/s      | PAM4       | 51.2 Tbps   |
+| Broadcom Tomahawk 6 (BCM78910) | 512         | 200 Gb/s      | PAM4       | 102.4 Tbps  |
+
+Note that ASICs within the same generation (e.g., Tomahawk 5 and Spectrum-4) share the same SerDes rate and lane count, yet differ in forwarding features, buffer architecture, and programmability.
+
+## Port Macros
+
+A **port macro** (also called a port block or port group) is a fixed hardware block on the ASIC that owns a cluster of SerDes lanes — typically 4 or 8 — along with their shared MAC engine, PCS logic, and clocking circuitry. Each port macro maps to one physical front-panel cage.
+
+For example, the Broadcom Tomahawk 1 divides its 128 lanes into 32 port macros of 4 lanes each. Those 32 macros correspond to 32 front-panel QSFP28 cages. The Tomahawk 5, with 512 lanes of 100G SerDes and 8-lane macros, has 64 port macros mapping to 64 OSFP cages.
+
+## Ports and Breakout
+
+A **port** is a logical interface formed by bonding one or more lanes within a port macro. The port's total speed is the sum of its lane speeds:
+
+    Port speed = Per-lane rate × Number of lanes
+
+By default, all lanes in a macro bond into a single port at the macro's full native speed (e.g., 4 × 25G = one 100G port on Tomahawk 1). This default configuration — one port per macro — is not the only option. Reconfiguring a macro to split its lanes into multiple independent ports is called **breakout** (also known as channel splitting or fan-out). Each resulting sub-port operates as a separate logical interface with its own MAC address, IP configuration, and forwarding behavior. The macro is the fixed silicon; the ports are flexible constructs within it.
+
+The following example shows the same 4-lane port macro (25G NRZ SerDes) configured three different ways. The notation `MxS` describes the configuration: M logical ports each at speed S.
+
+```
+  Port Macro (4 × 25G SerDes lanes)
+  ┌──────────────────────────────────────────────────────────┐
+  │  Lane 0 (25G)  Lane 1 (25G)  Lane 2 (25G)  Lane 3 (25G)  │
+  └──────────────────────────────────────────────────────────┘
+
+  1×100G (default, all lanes bonded):
+  ┌──────────────────────────────────────────────────┐
+  │                  Port 0: 100G                    │
+  │          Lane 0 + Lane 1 + Lane 2 + Lane 3       │
+  └──────────────────────────────────────────────────┘
+
+  2×50G (breakout, two lanes each):
+  ┌────────────────────────┬─────────────────────────┐
+  │     Port 0: 50G        │      Port 1: 50G        │
+  │   Lane 0 + Lane 1      │    Lane 2 + Lane 3      │
+  └────────────────────────┴─────────────────────────┘
+
+  4×25G (breakout, one lane each):
+  ┌───────────┬────────────┬────────────┬────────────┐
+  │ Port 0:25G│ Port 1:25G │ Port 2:25G │ Port 3:25G │
+  │  Lane 0   │  Lane 1    │  Lane 2    │  Lane 3    │
+  └───────────┴────────────┴────────────┴────────────┘
+```
 
 **Why breakout exists:** Not every connected device operates at the full speed of the switch port. A switch with 400G physical ports may need to connect servers with 100G NICs. Without breakout, a high-speed port would be underutilized serving a single lower-speed device. With breakout, one physical cage can serve multiple endpoints, maximizing the switch's I/O budget utilization.
 
-<img src="../pics/breakout.png" alt="segment" width="700">
-
-The port macro's lane group is subdivided. A logical port's speed equals the number of lanes assigned to it multiplied by the per-lane rate. For a port macro with N lanes at rate R:
-
-- All N lanes bonded → one port at N × R
-- N/2 lanes each → two ports at (N/2) × R
-- 1 lane each → N ports at 1 × R
-
-The notation `MxS` describes a breakout configuration: M logical ports each at speed S.
-
-For example, `4x25G` means four logical ports at 25G each.
+<img src="../pics/breakout.png" alt="Port breakout example" width="700">
 
 **Requirements and constraints:**
 
-- Breakout is an ASIC capability. The port macro hardware must support the requested lane grouping; not all ASICs support all possible subdivisions.
+- The port macro hardware must support the requested lane grouping; not all ASICs support all possible subdivisions.
+
+- Each port macro is independently configurable — one cage can run at full speed while an adjacent cage is broken out. A real switch typically uses a mix of configurations, not a uniform breakout across all macros.
+
 - Within a single port macro, all lanes typically must operate at the same base signaling rate. Mixed-rate lanes within one cage are generally not supported.
-- Each port macro is independently configurable. One cage can run at full speed while an adjacent cage is broken out, because they are separate hardware blocks.
+
 - Breakout changes require the physical cabling to match. A breakout cable (fan-out cable) splits the high-density connector into multiple lower-density connectors — for example, one QSFP28 to four SFP28, or one OSFP to eight QSFP28.
+
 - The total aggregate bandwidth of the switch does not change under breakout. Lanes are redistributed, not added.
+
+
+## Front-Panel Port Layouts
+
+While the ASIC defines the lane budget and breakout options, the switch vendor determines the physical port layout by selecting a cage arrangement that targets a specific market. For example, the 32 port macros (4 lanes each) of the BCM56960 map naturally to 32 QSFP28 cages, making 32×100G the canonical form factor. Nearly every commercial switch built on Tomahawk 1 shipped with this identical layout:
+
+| Switch           | Vendor         | Front-Panel Ports     |
+| ---------------- | -------------- | --------------------- |
+| Seastone DX010   | Celestica      | 32x QSFP28 (100G)     |
+| AS7712-32X       | Edgecore       | 32x QSFP28 (100G)     |
+| Wedge 100        | Facebook / OCP | 32x QSFP28 (100G)     |
+| 7060CX-32S       | Arista         | 32x QSFP28 (100G)     |
+
+No vendor productized a dedicated 64-port 50G or 128-port 25G Tomahawk 1 switch. The 100G market was the target, and lower speeds are reachable via per-port breakout on the same 32-cage platform. Dedicated 25G SFP28 switches (e.g., 48x25G + uplinks) were served by cheaper ASICs in Broadcom's Trident family, making a dedicated 128-port Tomahawk 1 design commercially unnecessary.
