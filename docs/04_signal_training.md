@@ -47,6 +47,7 @@ The number of taps and their placement depend on the SerDes architecture, suppor
 
 Positive weights add energy, negative weights subtract energy, and zero disables a tap entirely. By carefully choosing these values, the transmitter boosts transitions, reduces long flat regions, and restores high-frequency content lost in the channel.
 
+
 ## Link Training
 
 At high speeds, the electrical channel (PCB traces, connectors, cables) distorts signals in ways that depend on the specific physical link. The equalization described above is split between TX and RX. As an analogy:
@@ -62,7 +63,7 @@ If all links were identical, we could hardcode EQ settings. But in reality:
 - Voltage drifts
 - Aging affects analog behavior
 
-So the best EQ settings are not static. These weights are not fixed and can change depending on environment, channel, and policy. That is exactly why link training exists.
+So the best EQ settings are not static. These weights are not fixed and can change depending on environment, channel, and policy. That is exactly why **link training** exists.
 
 Link training is the automatic startup calibration process that runs when a link comes up. Its job is simple but critical: Find a combination of TX and RX settings that produces a stable, low-BER link as quickly as possible. Link training typically takes 1 to 3 seconds and runs:
 
