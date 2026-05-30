@@ -137,7 +137,7 @@ The following example shows the same 4-lane port macro (25G NRZ SerDes) configur
 
 ## Front-Panel Port Layouts
 
-While the ASIC defines the lane budget and breakout options, the switch vendor determines the physical port layout by selecting a cage arrangement that targets a specific market. For example, the 32 port macros (4 lanes each) of the BCM56960 map naturally to 32 QSFP28 cages, making 32×100G the canonical form factor. Nearly every commercial switch built on Tomahawk 1 shipped with this identical layout:
+While the ASIC defines the lane budget and breakout options, the switch vendor determines the physical port layout by selecting a cage type that targets a specific market. On the Tomahawk 1, the natural configuration — one QSFP28 cage per port macro — yields 32 front-panel ports at 100G each. Nearly every commercial switch built on this ASIC shipped with this identical layout:
 
 | Switch           | Vendor         | Front-Panel Ports     |
 | ---------------- | -------------- | --------------------- |
@@ -147,3 +147,52 @@ While the ASIC defines the lane budget and breakout options, the switch vendor d
 | 7060CX-32S       | Arista         | 32x QSFP28 (100G)     |
 
 No vendor productized a dedicated 64-port 50G or 128-port 25G Tomahawk 1 switch. The 100G market was the target, and lower speeds are reachable via per-port breakout on the same 32-cage platform. Dedicated 25G SFP28 switches (e.g., 48x25G + uplinks) were served by cheaper ASICs in Broadcom's Trident family, making a dedicated 128-port Tomahawk 1 design commercially unnecessary.
+
+## SerDes IP Cores
+
+Designing a SerDes is one of the hardest problems in semiconductor engineering. The circuit operates at the boundary between analog and digital — it must drive and recover signals at 100–200 Gb/s per lane through lossy channels, while meeting tight jitter, power, and area budgets. Building a competitive SerDes requires deep expertise in high-frequency analog design, process-node characterization, and years of silicon validation. This cost and complexity means that not every company designing an NPU also designs its own SerDes.
+
+The semiconductor industry addresses this through **IP licensing**. Specialized companies develop SerDes circuits as reusable **IP cores** (also called IP blocks or hard macros) and license them to ASIC designers. The NPU vendor integrates the licensed SerDes IP into its chip layout alongside its own forwarding pipeline, memory subsystem, and other logic. The final chip is fabricated as a single die — the end user sees one ASIC, but internally it contains IP from multiple sources. This model is analogous to how many SoC designers license CPU cores from Arm rather than designing their own processor microarchitecture.
+
+Some NPU vendors take the opposite approach and develop their SerDes entirely in-house, treating it as a competitive differentiator. Broadcom, for example, designs its own SerDes across all Tomahawk and Trident generations — its control over the full analog chain from SerDes through PHY to driver is a core part of its silicon advantage. NVIDIA (Mellanox) similarly develops proprietary SerDes for the Spectrum family. Other vendors — particularly smaller ASIC companies, FPGA makers, and startups — license from third parties to avoid the multi-year investment and instead focus engineering resources on their differentiated forwarding logic.
+
+The table below lists the major SerDes IP providers in the industry:
+
+| IP Vendor                 | Type | SerDes Portfolio | Max Lane Rate | Notes |
+| ------------------------- | ----------------------- | --- | --- | --- |
+| **Synopsys** (DesignWare) | Third-party licensor | 10G through 224G Ethernet PHY IP | 224 Gb/s | Largest semiconductor IP company; SerDes IP used across networking, AI accelerators, and HPC ASICs |
+| **Cadence** (IP Group)    | Third-party licensor | 10G through 224G multi-protocol SerDes | 224 Gb/s | Major EDA vendor with broad analog/mixed-signal IP portfolio |
+| **Alphawave Semi**        | Third-party licensor | 10G through 224G SerDes, DSP, and chiplet interconnect | 224 Gb/s | Pure-play connectivity IP company; supplies hyperscalers and custom ASIC designers |
+| **Rambus**                | Third-party licensor | 56G through 224G SerDes PHY | 224 Gb/s | Known for memory interface IP; expanded into high-speed SerDes |
+| **Credo Semiconductor**   | Third-party licensor + own products | 50G through 200G SerDes/DSP cores | 200 Gb/s | Also ships standalone retimer and active cable products using its own SerDes |
+| **Broadcom**              | In-house (proprietary)     | All generations, 10G through 200G | 200 Gb/s | Designs SerDes for its own Tomahawk / Trident / Jericho ASICs; does not license to others |
+| **NVIDIA (Mellanox)**     | In-house (proprietary)     | All generations for Spectrum and ConnectX | 100 Gb/s | Proprietary SerDes tightly co-designed with NIC and switch ASICs |
+| **Marvell**               | In-house + acquired IP     | SerDes for Prestera, Teralynx, and custom platforms | 100 Gb/s | In-house capability bolstered by Inphi (optical DSP) and Innovium acquisitions |
+| **Intel** (Altera)        | In-house (FPGA-integrated) | Transceiver hard macros in Stratix, Agilex FPGAs | 116 Gb/s | SerDes baked into FPGA fabric; also used in Tofino switch ASICs |
+
+A few patterns are worth noting. The third-party IP market is dominated by EDA giants (Synopsys, Cadence) and a handful of focused connectivity companies (Alphawave, Credo, Rambus). NPU vendors with the highest volumes (Broadcom, NVIDIA) tend to keep SerDes in-house because the engineering investment is amortized across millions of shipped ASICs and because co-optimizing SerDes with the forwarding pipeline yields performance and power advantages. Smaller or newer entrants license IP to reach market faster — the licensing fee is significant but far less than funding an analog design team for several years.
+
+### Broadcom In-House SerDes Portfolio
+
+Broadcom internally names each SerDes PHY generation using bird-themed code names. These names appear in the open-source OpenBCM SDK as `phymod` driver families (e.g., `tscf` = TSC Falcon, `tscbh` = TSC Blackhawk), where the **TSC** (Transport SerDes Core) prefix denotes the macro wrapper around the raw analog PHY.
+
+Each new SerDes core first appears in the high-end Tomahawk line and is subsequently deployed in the cost-optimized Trident line:
+
+| SerDes Core         | Per-Lane Rate | Modulation | OIF Standard | Switch ASIC Usage                                    |
+| ------------------- | ------------- | ---------- | ------------ | ---------------------------------------------------- |
+| Eagle (TSCE)        | 10 Gb/s       | NRZ        | CEI-10G      | Legacy StrataXGS (Trident 2 era and earlier)         |
+| Merlin (TSC4-MC)    | 10 Gb/s       | NRZ        | CEI-10G      | Management ports on TH3/TH4; lower-tier front-panel  |
+| Falcon (TSCF)       | 25 Gb/s       | NRZ        | CEI-25G      | TH1 (BCM56960), TH2 (BCM56970), Trident 3 (BCM56870) |
+| Blackhawk (TSCBH)   | 50 Gb/s       | PAM4       | CEI-56G      | TH3 (BCM56980), TH4 / Trident 4 (Blackhawk7, 7nm)    |
+| Peregrine           | 100 Gb/s      | PAM4       | CEI-112G     | TH5                                                  |
+| Condor              | 200 Gb/s      | PAM4       | CEI-224G     | TH6 (BCM78910)                                       |
+
+Key observations:
+
+- **Falcon is shared across tiers.** Both Tomahawk 1/2 (data-center) and Trident 3 (enterprise) use the same Falcon SerDes core — the difference is lane count and forwarding features, not SerDes IP.
+
+- **Blackhawk7 is a process shrink, not a new architecture.** TH4 and Trident 4 use "Blackhawk7" — the same Blackhawk analog design ported from 16nm (TH3) to 7nm. The SerDes is functionally equivalent; the shrink improves power and area.
+
+- **Lane count scaling.** Tomahawk doubled its lane count from 128 (TH1) to 256 (TH2) within the Falcon generation, then doubled again to 512 (TH4) in the Blackhawk generation. Since TH4, the lane count has held at 512 while per-lane rate doubles each generation — the I/O budget now scales purely through faster SerDes.
+
+- **Jericho (not shown).** Broadcom's service-provider routing family (Jericho 2, Jericho 3) uses Blackhawk for 50G PAM4 fabric links alongside Falcon16 (a multi-lane variant) for 25G NRZ backward compatibility.

@@ -96,7 +96,7 @@ The trade-off is noise margin: packing four levels into the same voltage swing m
 
 Gray code assigns bit patterns to adjacent signal levels such that neighboring levels differ by only one bit. In PAM4, without Gray coding, the four levels would be labeled 00, 01, 10, 11 — and a transition between 01 and 10 (the middle pair) would flip both bits. With Gray coding (00, 01, 11, 10), every adjacent-level error changes only one bit.
 
-This matters because PAM4's reduced eye opening makes level-to-level confusion the most common error. Gray coding ensures the most likely error (confusing adjacent levels) produces a single-bit error instead of a two-bit error, cutting the effective bit error impact in half and improving observed BER without any analog hardware changes.
+This matters because PAM4's tight level spacing makes level-to-level confusion the most common error. Gray coding ensures the most likely error (confusing adjacent levels) produces a single-bit error instead of a two-bit error, cutting the effective bit error impact in half and improving observed BER without any analog hardware changes.
 
 
 
@@ -199,7 +199,7 @@ The following shows the eye diagram for an NRZ (two-level) signal:
 
 **Eye width** (horizontal opening) represents the timing margin. A wider eye means the receiver can tolerate more clock jitter and still sample correctly.
 
-When the eye is open, communication is stable. When the eye closes — due to any of the distortion mechanisms above — voltage and timing margins shrink, the receiver starts misdetecting symbols, bit errors increase, and at higher layers this manifests as link flapping, retries, or instability.
+Together, eye height and eye width define the **eye opening** — the clear region in the center of the diagram where the receiver can sample safely. When the eye opening is large, communication is stable. When the eye closes — due to any of the distortion mechanisms above — voltage and timing margins shrink, the receiver starts misdetecting symbols, bit errors increase, and at higher layers this manifests as link flapping, retries, or instability.
 
 The impact of modulation on eye quality is visible when comparing NRZ and PAM4. NRZ produces a single wide eye opening between its two voltage levels. PAM4 splits the same voltage swing across four levels, creating three stacked eyes each approximately one-third the height — significantly reducing voltage margin per symbol:
 
