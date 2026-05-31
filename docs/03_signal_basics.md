@@ -75,7 +75,7 @@ In modern high-speed serial links, "NRZ" almost universally refers to Polar NRZ-
 
 ### PAM4 (Pulse Amplitude Modulation, 4-Level)
 
-With NRZ, the only way to increase data rate is to increase the symbol rate — transmit more symbols per second. But the physical channel pushes back: higher symbol rates mean higher-frequency signal components, and copper traces and connectors attenuate high frequencies far more than low frequencies. At some point, the channel loss becomes so severe that the signal arriving at the receiver is too degraded to sample reliably, no matter how good the equalization is. For NRZ, this practical ceiling is roughly 56 Gb/s per lane.
+With NRZ, the only way to increase data rate is to increase the symbol rate — transmit more symbols per second. But the physical channel pushes back: higher symbol rates mean higher-frequency signal components, and copper traces and connectors attenuate high frequencies far more than low frequencies. At some point, the channel loss becomes so severe that the signal arriving at the receiver is too degraded to sample reliably, no matter how good the equalization is. For NRZ over typical Ethernet channel lengths, this practical ceiling is around 25–28 GBd per lane.
 
 PAM4 sidesteps this limit by encoding more data into each symbol rather than transmitting symbols faster. Instead of two voltage levels (1 bit per symbol), PAM4 uses four voltage levels (2 bits per symbol), doubling the data rate at the same baud rate:
 
@@ -97,8 +97,6 @@ The trade-off is noise margin: packing four levels into the same voltage swing m
 Gray code assigns bit patterns to adjacent signal levels such that neighboring levels differ by only one bit. In PAM4, without Gray coding, the four levels would be labeled 00, 01, 10, 11 — and a transition between 01 and 10 (the middle pair) would flip both bits. With Gray coding (00, 01, 11, 10), every adjacent-level error changes only one bit.
 
 This matters because PAM4's tight level spacing makes level-to-level confusion the most common error. Gray coding ensures the most likely error (confusing adjacent levels) produces a single-bit error instead of a two-bit error, cutting the effective bit error impact in half and improving observed BER without any analog hardware changes.
-
-
 
 ## Block Encoding
 

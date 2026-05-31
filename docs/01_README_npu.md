@@ -14,7 +14,7 @@ Every network switch operates across two distinct processing domains:
 
 <img src="../pics/switch-planes.png" alt="High-level switch architecture" width="700">
 
-The CPU never touches forwarded packets. It computes routing decisions (e.g., BGP best path), then programs the results into the NPU's forwarding tables. From that point, the NPU handles all matching traffic autonomously in hardware. This division is what allows a switch with a modest embedded processor to forward terabits per second of traffic.
+This division is what allows a switch with a modest embedded processor to forward terabits per second of traffic: the CPU computes a routing decision once (e.g., BGP best path) and programs it into the NPU, which then handles all matching packets autonomously without further CPU involvement.
 
 | Domain        | Component            | Role                                                   |
 | ------------- | -------------------- | ------------------------------------------------------ |
@@ -87,14 +87,20 @@ The sections below focus on Broadcom in detail because it is the ASIC used in th
 
 ## Broadcom Switching ASIC Generations
 
-Broadcom is the dominant merchant silicon vendor for data center switches. They produce two main families of switching ASICs under the StrataXGS brand, plus a carrier-grade family. Both data center families roughly double in bandwidth every two years.
+Broadcom organizes its switching and routing ASICs under two platform brands:
+
+- **StrataXGS** — The Ethernet switching platform, optimized for high port-density, low-latency, cut-through forwarding with shallow on-chip buffers (SRAM). This brand covers both the **Tomahawk** and **Trident** families used in data center and enterprise switches.
+
+- **StrataDNX** — The carrier routing platform, optimized for deep packet buffering (external HBM), large routing tables (millions of FIB entries), MPLS/segment routing, and fabric-attach multi-chassis architectures. This brand covers the **Jericho** family used in service provider core routers and DCI platforms.
+
+Both StrataXGS families roughly double in bandwidth every two years.
 
 **Tomahawk (bandwidth-optimized)**
 
 The **Tomahawk** family prioritizes raw switching bandwidth with a simpler fixed pipeline — it is used in spine switches and high-density leaf switches where throughput matters most.
 
-| Generation | Chip     | Year | Throughput | SerDes          | Process |
-| ---------- | -------- | ---- | ---------- | --------------- | ------- |
+| Generation | Chip     | Year | Throughput | SerDes         | Process |
+| ---------- | -------- | ---- | ---------- | -------------- | ------- |
 | Tomahawk   | BCM56960 | 2014 | 3.2 Tbps   | 128× 25G NRZ   | 28 nm   |
 | Tomahawk 2 | BCM56970 | 2016 | 6.4 Tbps   | 256× 25G NRZ   | 16 nm   |
 | Tomahawk 3 | BCM56980 | 2017 | 12.8 Tbps  | 256× 50G PAM4  | 7 nm    |
@@ -114,9 +120,9 @@ The **Trident** family prioritizes feature depth and programmability — it supp
 | Trident 4   | BCM56880 | 2019 | up to 12.8 Tbps | 50G PAM4  | 7 nm    |
 | Trident 5   | BCM78800 | 2023 | 16 Tbps         | 100G PAM4 | 5 nm    |
 
-**StrataDNX / Jericho (carrier and DCI)**
+**Jericho (carrier and DCI)**
 
-Broadcom also produces the **Jericho** family for carrier-grade routing and DCI (Data Center Interconnect). Jericho chips emphasize deep packet buffering (using HBM), large routing tables (millions of entries), and fabric-attach architectures for multi-chassis systems. They are used in core routers and spine-layer routers, not in ToR leaf switches.
+The **Jericho** family targets carrier-grade routing and DCI (Data Center Interconnect). Jericho chips emphasize deep packet buffering (using HBM), large routing tables (millions of entries), and fabric-attach architectures for multi-chassis systems. They are used in core routers and spine-layer routers, not in ToR leaf switches.
 
 | Generation  | Year | Throughput |
 | ----------- | ---- | ---------- |

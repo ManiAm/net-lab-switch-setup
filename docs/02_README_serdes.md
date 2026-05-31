@@ -26,7 +26,7 @@ A **SerDes** is the analog/mixed-signal circuit block on the NPU that performs t
 
 The diagram below shows the internal stages of a SerDes:
 
-<img src="../pics/serdes_full.png" alt="SerDes block diagram" width="750">
+<img src="../pics/serdes_full.png" alt="SerDes block diagram" width="800">
 
 On transmit:
 
@@ -40,7 +40,7 @@ On the transmit side, **block encoding** (e.g., 64b/66b with scrambling) adds fr
 
 On the receive side, **CTLE** boosts high frequencies attenuated by the channel, partially restoring the signal so downstream stages can recover the data. **CDR** recovers the clock embedded in the data transitions. The **sampler** captures the signal at the optimal point using that clock. **DFE** cancels residual inter-symbol interference using previous decisions. The **deserializer** converts the recovered serial bitstream back into a wide parallel word. The **decoder** reverses block encoding — descrambling, removing sync headers, and extracting control characters — to recover the original data.
 
-> The diagram omits [FEC encoding](03_signal_basics.md#forward-error-correction-fec), which sits between block encoding and the serializer on transmit, and between the deserializer and decoder on receive. For a detailed discussion of encoding stages and FEC, see [Digital Signal Fundamentals](03_signal_basics.md). For equalization and link training, see [Link Equalization](04_signal_training.md).
+> The diagram omits FEC encoding, which sits between block encoding and the serializer on transmit, and between the deserializer and decoder on receive. For a detailed discussion of encoding stages and FEC, see [Digital Signal Fundamentals](03_signal_basics.md). For equalization and link training, see [Link Equalization](04_signal_training.md).
 
 ## SerDes Lanes
 
@@ -75,7 +75,7 @@ The table below shows how lane count and per-lane rate determine this budget acr
 | NVIDIA Spectrum-4              | 512         | 100 Gb/s      | PAM4       | 51.2 Tbps   |
 | Broadcom Tomahawk 6 (BCM78910) | 512         | 200 Gb/s      | PAM4       | 102.4 Tbps  |
 
-Note that ASICs within the same generation (e.g., Tomahawk 5 and Spectrum-4) share the same SerDes rate and lane count, yet differ in forwarding features, buffer architecture, and programmability.
+Note that ASICs targeting the same Ethernet bandwidth class (e.g., Tomahawk 5 and Spectrum-4) share the same SerDes rate and lane count, yet differ in forwarding features, buffer architecture, and programmability.
 
 ## Port Macros
 
@@ -168,7 +168,7 @@ The table below lists the major SerDes IP providers in the industry:
 | **Broadcom**              | In-house (proprietary)     | All generations, 10G through 200G | 200 Gb/s | Designs SerDes for its own Tomahawk / Trident / Jericho ASICs; does not license to others |
 | **NVIDIA (Mellanox)**     | In-house (proprietary)     | All generations for Spectrum and ConnectX | 100 Gb/s | Proprietary SerDes tightly co-designed with NIC and switch ASICs |
 | **Marvell**               | In-house + acquired IP     | SerDes for Prestera, Teralynx, and custom platforms | 100 Gb/s | In-house capability bolstered by Inphi (optical DSP) and Innovium acquisitions |
-| **Intel** (Altera)        | In-house (FPGA-integrated) | Transceiver hard macros in Stratix, Agilex FPGAs | 116 Gb/s | SerDes baked into FPGA fabric; also used in Tofino switch ASICs |
+| **Intel** (Altera)        | In-house (FPGA-integrated) | Transceiver hard macros in Stratix, Agilex FPGAs | 116 Gb/s | SerDes integrated into FPGA fabric; also used in Tofino switch ASICs |
 
 A few patterns are worth noting. The third-party IP market is dominated by EDA giants (Synopsys, Cadence) and a handful of focused connectivity companies (Alphawave, Credo, Rambus). NPU vendors with the highest volumes (Broadcom, NVIDIA) tend to keep SerDes in-house because the engineering investment is amortized across millions of shipped ASICs and because co-optimizing SerDes with the forwarding pipeline yields performance and power advantages. Smaller or newer entrants license IP to reach market faster — the licensing fee is significant but far less than funding an analog design team for several years.
 
@@ -193,6 +193,6 @@ Key observations:
 
 - **Blackhawk7 is a process shrink, not a new architecture.** TH4 and Trident 4 use "Blackhawk7" — the same Blackhawk analog design ported from 16nm (TH3) to 7nm. The SerDes is functionally equivalent; the shrink improves power and area.
 
-- **Lane count scaling.** Tomahawk doubled its lane count from 128 (TH1) to 256 (TH2) within the Falcon generation, then doubled again to 512 (TH4) in the Blackhawk generation. Since TH4, the lane count has held at 512 while per-lane rate doubles each generation — the I/O budget now scales purely through faster SerDes.
+- **Lane count scaling.** Tomahawk doubled its lane count from 128 (TH1) to 256 (TH2) within the Falcon generation. TH3 retained 256 lanes when it moved to Blackhawk (50G PAM4), then TH4 doubled again to 512 lanes. Since TH4, the lane count has held at 512 while per-lane rate doubles each generation — the I/O budget now scales purely through faster SerDes.
 
 - **Jericho (not shown).** Broadcom's service-provider routing family (Jericho 2, Jericho 3) uses Blackhawk for 50G PAM4 fabric links alongside Falcon16 (a multi-lane variant) for 25G NRZ backward compatibility.
